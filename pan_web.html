@@ -1,0 +1,206 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="pan_web.css">
+</head> 
+<body onload=populate()>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title">Seen</h2>
+                        <ul id = "seen"></ul>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title">Not Seen</h2>
+                        <ul id = "not_seen"></ul>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title">Previously Not Seen</h2>
+                        <ul id = "not_seen2"></ul>
+                    </div>
+                </div>
+            
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title">Removed Cities</h2>
+                        <ul id = "removed_cities"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title">All cities</h2>
+                        <label>Epidemic: </label>
+                        <input type="checkbox" id="epidemic">
+                        <ul id = "all_cities"></ul>
+                    </div>
+                </div>
+                <input id="city_input" placeholder="city, count"></input>
+                <button onclick="add_city()">Add city</button>
+            </div>
+        </div>
+    </div>
+    
+</body>
+</html>
+
+<script>
+    let json = {
+        "Cairo": 3,
+        "Sao_Paulo": 3,
+        "Istanbul": 3,
+        "Lagos": 3,
+        "Tripoli": 3,
+        "London": 3,
+        "New_York": 3,
+        "Washington": 3,
+        "Jacksonville": 3,
+        "Chicago": 2,
+        "Denver": 2,
+        "Buenos_Aires": 2,
+        "Paris": 2,
+        "San_Francisco": 2,
+        "Atlanta": 1,
+        "Frankfurt": 2,
+        "Los_Angeles": 1,
+        "Lima": 1,
+        "Santiago": 1,
+        "Mexico_City": 1,
+        "Kinsasha": 1,
+        "Khartoum": 1,
+        "Moscow": 1
+    }
+    let removed = {
+
+    }
+    let pool = []
+    let seen = {}
+
+    function sortObject(obj) {
+        return Object.keys(obj).sort().reduce(function (result, key) {
+            result[key] = obj[key];
+            return result;
+        }, {});
+    }
+
+    function see(city, pool_index) {
+        let current_pool = pool_index == 0 ? json : pool[pool_index];
+        if (city in seen) {
+            seen[city] += 1;
+            document.getElementById(city).innerHTML = city + ": " + seen[city];
+        } else {
+            seen[city] = 1;
+        }
+        
+        // remove the city from a pool if there is no more card left over
+        current_pool[city] -= 1;
+        if (!current_pool[city]) { delete current_pool[city] }
+
+        // epidemic case
+        if (document.getElementById("epidemic").checked) {
+            if (pool.length !== 0) { json[city]--; }
+        $("#seen")[0].innerHTML = "";
+            pool.push(Object.assign({}, seen));
+            seen = {};
+            document.getElementById("epidemic").checked = false;
+        }
+        update();
+        populate();
+    }
+    
+    function update() {
+        let seen_list = "";
+        seen = sortObject(seen);
+        $.each(seen, function (city, count) {
+            seen_list += 
+                `<li id=${city}>
+                    ${city}: ${seen[city]}
+                    <button class="remove" onclick="remove('${city}')">X</button>
+                </li>`
+        })
+        document.getElementById("seen").innerHTML = seen_list;
+
+        let removed_list = "";
+        removed = sortObject(removed);
+        $.each(removed, function (city, count) {
+            removed_list += 
+                `<li id=${city}>
+                    ${city}: ${removed[city]}
+                </li>`
+        })
+        document.getElementById("removed_cities").innerHTML = removed_list;
+
+        let buttons = "";
+        if (pool.length !== 0 && $.isEmptyObject(pool[pool.length - 1])) {
+            pool.pop();
+        }
+        if (pool.length >= 1) {
+        pool[pool.length - 1] = sortObject(pool[pool.length - 1]);    
+        $.each(pool[pool.length - 1], function(city, count) {
+            buttons += 
+                `<li>
+                    <button class=city${count} onclick="see('${city}', ${pool.length - 1})">${city}: ${count}</button>
+                </li>`
+        });
+        
+        } else {
+            buttons = "there are no not seen cards yet"
+        }
+        $("#not_seen")[0].innerHTML = buttons;
+        
+        let buttons2 = ""
+        if (pool.length >= 2) {
+        pool[pool.length - 2] = sortObject(pool[pool.length - 2]);    
+        $.each(pool[pool.length - 2], function(city, count) {
+            buttons2 += 
+                `<li>
+                    <button class="city${count}" onclick="see('${city}', ${pool.length - 2})">${city}: ${count}</button>
+                </li>`
+        });
+        } else {
+            buttons2 = "there are no previously not seen cards yet"
+        }
+        $("#not_seen2")[0].innerHTML = buttons2;
+    }
+    function populate() {
+        let buttons = "";
+        json = sortObject(json);
+        $.each(json, function(city, count) {
+            buttons += 
+            `<li>
+                <button class=city${count} onclick="see('${city}', 0)">${city}: ${count}</button>
+            </li>`
+        });
+        $("#all_cities")[0].innerHTML = buttons;
+    }
+    
+    function add_city() {
+        let input = $("#city_input")[0].value.split(",");
+        json[input[0]] = parseInt(input[1]);
+        populate();
+        $("#city_input")[0].value = "";
+    }
+
+    function remove(city) {
+        if (city in removed) {
+            removed[city] += 1;
+        } else {
+            removed[city] = 1;
+        }
+        seen[city] -= 1;
+        if (!seen[city]) { delete seen[city]; }
+        update();
+    }
+</script>
